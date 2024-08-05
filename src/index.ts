@@ -3,7 +3,7 @@ import SocketService from "./services/socket";
 
 async function init() {
   const httpServer = createServer();
-  const PORT = process.env.PORT || 8000;
+  const PORT = 8000;
 
   const socketService = new SocketService();
   socketService.io.attach(httpServer);
