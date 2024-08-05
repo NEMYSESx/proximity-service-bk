@@ -1,4 +1,4 @@
-import { Server } from "socket.io";
+import { Server, Socket } from "socket.io";
 
 class SocketService {
   private _io: Server;
@@ -13,15 +13,15 @@ class SocketService {
     });
   }
 
-  public get io() {
+  public get io(): Server {
     return this._io;
   }
 
-  public initListeners() {
+  public initListeners(): void {
     const io = this._io;
     console.log("Init socket listeners");
 
-    io.on("connect", (socket) => {
+    io.on("connect", (socket: Socket) => {
       console.log("New socket connected", socket.id);
 
       socket.on(
