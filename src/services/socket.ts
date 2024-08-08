@@ -1,5 +1,8 @@
 import { Server, Socket } from "socket.io";
+import axios from "axios";
+import { config } from "dotenv";
 
+config();
 class SocketService {
   private _io: Server;
   private locations: { [key: string]: { lat: string; long: string } } = {};
@@ -28,11 +31,15 @@ class SocketService {
 
       socket.on(
         "sendLocation",
-        ({ lat, long }: { lat: string; long: string }) => {
+        async ({ lat, long }: { lat: string; long: string }) => {
           console.log("Getting the location from frontend", socket.id);
           this.locations[socket.id] = { lat, long }; //only updating the data of the specific user
           io.emit("getLocation", this.locations); //emiting the updated data of specific user to all the users
-          console.log("sending the location to the frontend of all users");
+          const distances = await this.calculateDistance();
+          io.emit("getDistances", distances);
+          console.log(
+            "sending the location and distances to the frontend of all users"
+          );
         }
       );
 
@@ -41,14 +48,36 @@ class SocketService {
         io.emit("getOrientation", this.orientations);
       });
       console.log("hii");
-      socket.on("disconnect", () => {
+      socket.on("disconnect", async () => {
         console.log("Socket disconnected", socket.id);
         delete this.locations[socket.id];
         delete this.orientations[socket.id];
         io.emit("getLocation", this.locations); //sending the data so that remaing clients can get it after disconnected
         io.emit("getOrientation", this.orientations);
+        const distances = await this.calculateDistance();
+        io.emit("getDistances", distances);
       });
     });
+  }
+
+  private async calculateDistance() {
+    const coordinates = Object.values(this.locations).map(
+      (location) => `${location.lat},${location.long}`
+    );
+    const query = new URLSearchParams({
+      profile: "car",
+      point: coordinates.join("|"),
+      key: process.env.GRASSHOPPER_URL || "",
+    }).toString();
+    if (coordinates.length < 2) return [];
+    const url = `https://graphhopper.com/api/1/matrix?${query}`;
+    try {
+      const response = await axios.get(url);
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching distance from GraphHopper:", error);
+      return [];
+    }
   }
 }
 
